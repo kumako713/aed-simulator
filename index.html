@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AED 模擬器 — 民眾教學版</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: #e8e8e8;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap {
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: clamp(6px,1.5vw,16px);
+  min-height: 100vh; min-height: 100dvh;
+}
+
+/* Speech notice */
+.speech-notice {
+  background: #fff8e1; border: 1.5px solid #f5a623; border-radius: 10px;
+  padding: 7px 14px; font-size: clamp(11px,2vw,13px);
+  color: #7a5000; font-weight: 600; margin-bottom: clamp(6px,1.5vw,10px);
+  display: flex; align-items: center; gap: 8px;
+}
+.speech-notice.hidden { display: none; }
+
+/* Machine */
+.machine {
+  background: #fff; border-radius: clamp(14px,3vw,24px);
+  border: 3px solid #c8cdd2; flex: 1;
+  display: flex; flex-direction: column;
+  box-shadow: 0 6px 28px rgba(0,0,0,.12); overflow: hidden;
+}
+
+/* Top strip */
+.top-strip {
+  background: #e8ecf0; border-bottom: 2px solid #c8cdd2;
+  padding: clamp(8px,2vw,14px) clamp(12px,3vw,20px);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: clamp(8px,2vw,16px); flex-shrink: 0;
+}
+
+/* Power button */
+.btn-power {
+  width: clamp(52px,10vw,74px); height: clamp(52px,10vw,74px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #3ddc84, #15a04a);
+  border: 3px solid #0e7a38; box-shadow: 0 2px 10px rgba(21,160,74,.4);
+  cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  transition: all .2s; flex-shrink: 0;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.btn-power svg { width: clamp(26px,5vw,38px); height: clamp(26px,5vw,38px); }
+.btn-power .pr, .btn-power .pl { stroke: #fff; }
+.btn-power .pwr-lbl { font-size: clamp(7px,1.5vw,10px); color:#fff; font-weight:800; letter-spacing:1px; }
+.btn-power.on {
+  background: radial-gradient(circle at 38% 32%, #6effa8, #1dce60);
+  border-color: #00e676;
+  box-shadow: 0 0 0 5px rgba(0,230,118,.22), 0 2px 14px rgba(0,200,80,.5);
+}
+.btn-power:active { transform: scale(.92); }
+
+/* Brand */
+.brand-centre { text-align: center; flex: 1; min-width: 0; }
+.brand-name { font-size: clamp(20px,5vw,32px); font-weight:900; color:#1a4499; letter-spacing:4px; }
+.brand-sub  { font-size: clamp(9px,1.8vw,13px); color:#8892a0; font-weight:500; }
+
+/* Plug button — top right, smaller */
+.btn-plug {
+  width: clamp(44px,8.5vw,64px); height: clamp(44px,8.5vw,64px);
+  border-radius: 10px; background: #fff; border: 2px solid #222;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(22px,4.5vw,32px);
+  cursor: pointer; opacity: .3; pointer-events: none;
+  transition: all .2s; flex-shrink: 0;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.btn-plug.active      { opacity: 1; pointer-events: auto; }
+.btn-plug.active:active { transform: scale(.92); background: #f0f0f0; }
+.btn-plug.done        { opacity: .35; pointer-events: none; background: #e0e0e0; }
+
+/* Inner body */
+.machine-inner {
+  flex: 1; display: flex; flex-direction: column;
+  padding: clamp(10px,2.5vw,20px) clamp(12px,3vw,24px) clamp(12px,2.5vw,20px);
+  gap: clamp(8px,1.8vw,14px);
+}
+
+/* Step bar */
+.stepbar { display: flex; align-items: flex-start; }
+.stp { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; position:relative; }
+.stp-circle {
+  width: clamp(22px,4.5vw,32px); height: clamp(22px,4.5vw,32px);
+  border-radius:50%; background:#eef0f3; border:2px solid #c8cdd2;
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(9px,2vw,13px); color:#9aa5b0; font-weight:700;
+  transition:all .3s; z-index:1;
+}
+.stp-label { font-size:clamp(8px,1.6vw,11px); color:#9aa5b0; text-align:center; line-height:1.3; }
+.stp-line  { position:absolute; top:clamp(11px,2.2vw,16px); left:50%; width:100%; height:2px; background:#dde3e9; z-index:0; }
+.stp:last-child .stp-line { display:none; }
+.stp.done   .stp-circle { background:#1d9e75; border-color:#1d9e75; color:#fff; }
+.stp.done   .stp-label  { color:#1d9e75; }
+.stp.done   .stp-line   { background:#1d9e75; }
+.stp.active .stp-circle { background:#1a4499; border-color:#1a4499; color:#fff; }
+.stp.active .stp-label  { color:#1a4499; font-weight:700; }
+
+/* ECG screen */
+.ecg-screen {
+  background:#060f06; border-radius:clamp(8px,1.5vw,12px); border:2px solid #3a3a3a;
+  padding:clamp(6px,1.2vw,10px); flex:1; display:flex; flex-direction:column;
+}
+.ecg-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-shrink:0; }
+.ecg-tag    { font-size:clamp(9px,1.8vw,12px); color:#4db84d; font-weight:700; }
+.rhythm-badge { font-size:clamp(10px,2vw,13px); font-weight:700; padding:2px 10px; border-radius:5px; display:none; }
+.rb-vt  { background:#c0392b; color:#fff; display:inline-block; }
+.rb-vf  { background:#d93b3b; color:#fff; display:inline-block; }
+.rb-asr { background:#777;    color:#fff; display:inline-block; }
+.rb-pea { background:#d9850a; color:#fff; display:inline-block; }
+canvas#ecg { display:block; width:100%; flex:1; min-height:clamp(60px,12vw,120px); }
+.ecg-footer { display:flex; justify-content:space-between; margin-top:4px; flex-shrink:0; }
+.ecg-stat   { font-size:clamp(9px,1.8vw,12px); color:#3da83d; }
+
+/* Charge bar */
+.charge-wrap { display:none; flex-shrink:0; }
+.charge-wrap.show { display:block; }
+.charge-label { font-size:clamp(9px,1.8vw,11px); color:#666; margin-bottom:4px; }
+.charge-track { background:#e8ecf0; border-radius:3px; height:7px; overflow:hidden; }
+.charge-fill  { height:100%; width:0; background:#d93b3b; border-radius:3px; transition:width 2s linear; }
+
+/* Status */
+.status-box {
+  background:#eef2ff; border:1.5px solid #1a4499; border-radius:8px;
+  padding:clamp(8px,1.8vw,12px) clamp(10px,2.5vw,16px);
+  display:flex; align-items:center; flex-shrink:0;
+  min-height:clamp(44px,8vw,64px);
+}
+.status-txt { font-size:clamp(12px,2.5vw,16px); font-weight:700; color:#0f2d6e; line-height:1.45; }
+
+/* CPR bar */
+.cpr-bar {
+  display:none; background:#fff2f2; border:1.5px solid #d93b3b; border-radius:8px;
+  padding:clamp(8px,1.8vw,12px) clamp(10px,2.5vw,16px);
+  align-items:center; gap:clamp(8px,2vw,14px); flex-shrink:0;
+}
+.cpr-bar.show { display:flex; }
+.cpr-pulse {
+  width:clamp(32px,6vw,48px); height:clamp(32px,6vw,48px);
+  border-radius:50%; background:#d93b3b; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(16px,3vw,24px); color:#fff;
+}
+.cpr-pulse.beat { animation:heartbeat .15s ease-out; }
+@keyframes heartbeat {
+  0%  { transform:scale(1);    background:#d93b3b; }
+  50% { transform:scale(1.38); background:#a82020; }
+  100%{ transform:scale(1);    background:#d93b3b; }
+}
+.cpr-info  { flex:1; min-width:0; }
+.cpr-title { font-size:clamp(12px,2.2vw,15px); font-weight:700; color:#a82020; }
+.cpr-sub   { font-size:clamp(10px,1.8vw,12px); color:#888; margin-top:1px; }
+.cpr-countdown { font-size:clamp(11px,2vw,14px); color:#d93b3b; font-weight:800; margin-top:3px; }
+.cpr-stop {
+  background:#fff; border:2px solid #d93b3b; border-radius:6px;
+  color:#d93b3b; font-size:clamp(11px,2vw,13px); font-weight:700;
+  cursor:pointer; padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);
+  touch-action:manipulation; white-space:nowrap; transition:all .2s;
+}
+.cpr-stop:active { background:#d93b3b; color:#fff; }
+
+/* Indicators */
+.ind-row { display:flex; gap:clamp(8px,2vw,16px); align-items:center; flex-wrap:wrap; flex-shrink:0; }
+.dot { width:clamp(9px,2vw,13px); height:clamp(9px,2vw,13px); border-radius:50%; background:#d8dfe8; transition:background .3s; }
+.dot.green { background:#00c853; animation:blink 1.1s infinite; }
+.dot.red   { background:#d93b3b; animation:blink .5s infinite; }
+.dot-lbl   { font-size:clamp(9px,1.8vw,12px); color:#9aa5b0; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* Shock button */
+.shock-centre { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.btn-shock-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; opacity:.2; pointer-events:none; transition:opacity .3s; }
+.btn-shock-wrap.active { opacity:1; pointer-events:auto; }
+/* Only the triangle glows — not the label */
+.btn-shock-wrap.active .shock-triangle { animation:shock-glow 1.1s infinite; }
+@keyframes shock-glow {
+  0%,100%{ filter:drop-shadow(0 0 0px rgba(220,60,0,0)); }
+  50%    { filter:drop-shadow(0 0 22px rgba(220,60,0,.9)); }
+}
+.btn-shock {
+  width:clamp(80px,18vw,130px); height:clamp(80px,18vw,130px);
+  background:none; border:none; padding:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none;
+}
+.shock-triangle { display:flex; align-items:center; justify-content:center; }
+.btn-shock svg { width:clamp(76px,17vw,126px); height:clamp(76px,17vw,126px); }
+.btn-shock:active { transform:scale(.93); }
+.tri-bg  { fill:#8a1800; }
+.tri-mid { fill:#b02200; opacity:.4; }
+.tri-bolt{ fill:#fff; stroke:#fff; stroke-width:.4; stroke-linejoin:round; }
+.btn-shock-wrap.active .tri-bg  { fill:#e83000; }
+.btn-shock-wrap.active .tri-mid { fill:#ff5520; opacity:.35; }
+
+/* Shock label — NO box, black text, no animation */
+.shock-label-txt {
+  font-size:clamp(13px,2.8vw,18px);
+  font-weight:900; color:#111; letter-spacing:3px;
+}
+
+/* Bottom bar */
+.bottom-bar {
+  display:flex; gap:clamp(8px,2vw,14px); align-items:center;
+  justify-content:space-between; flex-shrink:0;
+}
+.btn-outline {
+  background:#fff; border:2px solid #222; border-radius:8px; color:#111;
+  font-size:clamp(12px,2.2vw,15px); font-weight:700; cursor:pointer;
+  padding:clamp(8px,1.8vw,12px) clamp(12px,2.5vw,20px);
+  transition:all .2s; display:flex; align-items:center; gap:5px;
+  touch-action:manipulation; white-space:nowrap;
+}
+.btn-outline:active { background:#111; color:#fff; }
+
+/* AED label */
+.aed-label {
+  text-align:center; font-style:italic; letter-spacing:6px;
+  font-size:clamp(20px,4.5vw,36px); font-weight:900; color:#1a4499; flex-shrink:0;
+}
+
+/* Rhythm selector — single row, 4 buttons */
+.rhythm-sel {
+  background:#f4f6f9; border:1.5px solid #c8cdd2; border-radius:10px;
+  padding:clamp(8px,1.8vw,12px) clamp(8px,2vw,14px); display:none; flex-shrink:0;
+}
+.rhythm-sel.show { display:block; }
+.rhythm-sel-hdr {
+  font-size:clamp(9px,1.8vw,11px); color:#8892a0; font-weight:700;
+  text-transform:uppercase; letter-spacing:.5px; margin-bottom:clamp(6px,1.2vw,10px); display:block;
+}
+.rbtn-row { display:flex; gap:clamp(4px,1vw,8px); flex-wrap:nowrap; }
+.rbtn {
+  flex:1; min-width:0;
+  padding:clamp(7px,1.5vw,11px) clamp(2px,0.8vw,6px);
+  border-radius:7px; border:1.5px solid #c8cdd2;
+  background:#fff; color:#334;
+  font-size:clamp(10px,2vw,13px); font-weight:600; font-style:italic;
+  cursor:pointer; text-align:center; line-height:1.35; transition:all .2s;
+  touch-action:manipulation;
+}
+.rbtn small { display:block; font-size:clamp(8px,1.5vw,10px); opacity:.7; font-style:normal; margin-top:2px; }
+.rbtn:active    { border-color:#1a4499; color:#1a4499; background:#edf0ff; }
+.rbtn.sel-vt    { background:#fff0f0; border-color:#c0392b; color:#7a1010; font-weight:800; }
+.rbtn.sel-vf    { background:#fff0f0; border-color:#d93b3b; color:#9a1818; font-weight:800; }
+.rbtn.sel-asr   { background:#f4f4f4; border-color:#777;    color:#333;    font-weight:800; }
+.rbtn.sel-pea   { background:#fffbee; border-color:#d9850a; color:#7a4800; font-weight:800; }
+.rbtn.disabled  { opacity:.38; pointer-events:none; }
+
+/* ── Pad placement auto-popup modal ── */
+.pad-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.65);
+  z-index:400; display:none; align-items:center; justify-content:center; padding:1rem;
+}
+.pad-overlay.show { display:flex; }
+/* Fills 40% of screen height, centres, clickable anywhere to close */
+.pad-popup {
+  background:#fff; border:3px solid #1a4499; border-radius:20px;
+  width:min(560px,94vw); height:40vh; min-height:260px;
+  box-shadow:0 12px 48px rgba(0,0,0,.28);
+  display:flex; flex-direction:column;
+  overflow:hidden; cursor:pointer;
+  animation:popup-in .25s ease-out;
+}
+@keyframes popup-in { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+.pad-popup-hdr {
+  background:#1a4499; padding:clamp(10px,2.5vw,18px) clamp(14px,3vw,24px);
+  flex-shrink:0;
+}
+.pad-popup-title { color:#fff; font-size:clamp(16px,3.5vw,24px); font-weight:900; text-align:center; }
+.pad-popup-sub   { color:rgba(255,255,255,.8); font-size:clamp(11px,2vw,14px); text-align:center; margin-top:4px; }
+.pad-popup-body  {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  gap:clamp(12px,3vw,28px); padding:clamp(10px,2vw,16px) clamp(14px,3vw,24px);
+  overflow:hidden;
+}
+.pad-fig-lg { flex:1; text-align:center; display:flex; flex-direction:column; align-items:center; }
+.pad-fig-lg svg { height:100%; max-height:clamp(100px,18vh,180px); width:auto; }
+.pad-fig-lg p { font-size:clamp(11px,2vw,15px); color:#555; font-weight:600; margin-top:6px; }
+.pad-popup-labels {
+  flex:1; display:flex; flex-direction:column; gap:clamp(8px,1.5vw,14px);
+  justify-content:center;
+}
+.pad-popup-lbl {
+  padding:clamp(8px,1.5vw,14px); border-radius:8px;
+}
+.pad-popup-lbl p:first-child { font-size:clamp(12px,2.2vw,16px); font-weight:800; margin-bottom:3px; }
+.pad-popup-lbl p:last-child  { font-size:clamp(11px,1.9vw,14px); color:#444; line-height:1.5; }
+.pad-popup-footer {
+  background:#f4f6f9; border-top:1px solid #dde3e9;
+  padding:clamp(7px,1.5vw,12px); text-align:center; flex-shrink:0;
+}
+.pad-popup-footer span { font-size:clamp(11px,2vw,14px); color:#888; font-weight:600; }
+
+/* General modal (for manual pad edu button) */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.58);
+  z-index:300; display:none; align-items:center; justify-content:center; padding:1rem;
+}
+.overlay.show { display:flex; }
+.modal-card {
+  background:#fff; border:2px solid #1a4499; border-radius:18px;
+  padding:clamp(14px,3vw,24px); width:min(400px,100%);
+  box-shadow:0 10px 40px rgba(0,0,0,.2); max-height:92vh; overflow-y:auto;
+}
+.modal-title { color:#1a4499; font-size:clamp(15px,3vw,18px); font-weight:900; text-align:center; margin-bottom:2px; }
+.modal-sub   { color:#888; font-size:clamp(10px,2vw,12px); text-align:center; margin-bottom:clamp(10px,2vw,14px); }
+.pad-figs    { display:flex; gap:clamp(8px,2vw,14px); margin-bottom:clamp(8px,2vw,12px); }
+.pad-fig     { flex:1; text-align:center; }
+.pad-fig svg { width:100%; max-width:145px; }
+.pad-fig p   { font-size:clamp(10px,2vw,12px); color:#888; margin-top:5px; }
+.pad-labels  { display:flex; gap:clamp(6px,1.5vw,10px); margin-bottom:clamp(8px,2vw,12px); }
+.pad-lbl     { flex:1; padding:clamp(6px,1.5vw,10px); border-radius:0 6px 6px 0; }
+.pad-lbl p:first-child { font-size:clamp(10px,2vw,12px); font-weight:800; margin-bottom:3px; }
+.pad-lbl p:last-child  { font-size:clamp(10px,2vw,12px); color:#444; line-height:1.5; }
+.pad-note {
+  background:#fff5f5; border-left:3px solid #d93b3b;
+  padding:clamp(6px,1.5vw,10px) clamp(8px,2vw,14px); border-radius:0 6px 6px 0;
+  font-size:clamp(10px,2vw,12px); color:#555; line-height:1.6; margin-bottom:clamp(10px,2vw,14px);
+}
+.btn-modal-close {
+  width:100%; padding:clamp(10px,2vw,13px); background:#1a4499; border:none; border-radius:8px;
+  color:#fff; font-size:clamp(14px,2.5vw,16px); font-weight:800; cursor:pointer;
+  touch-action:manipulation; transition:background .2s;
+}
+.btn-modal-close:active { background:#0f2d6e; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="speech-notice" id="speechNotice">
+    🔊 點擊任意按鈕以啟用語音功能
+  </div>
+
+  <div class="machine">
+
+    <!-- Top strip -->
+    <div class="top-strip">
+      <button class="btn-power" id="btnPwr" onclick="doPower()" aria-label="電源">
+        <svg viewBox="0 0 36 36" fill="none">
+          <path class="pr" d="M9 9A14 14 0 1 0 27 9" stroke-width="3.2" stroke-linecap="round"/>
+          <line class="pl" x1="18" y1="3" x2="18" y2="18" stroke-width="3.2" stroke-linecap="round"/>
+        </svg>
+        <span class="pwr-lbl">POWER</span>
+      </button>
+      <div class="brand-centre">
+        <div class="brand-name">AED</div>
+        <div class="brand-sub">自動體外心臟去顫器 — 民眾教學版</div>
+      </div>
+      <button class="btn-plug" id="btnPlug" onclick="doPlug()" title="插上貼片插頭">🔌</button>
+    </div>
+
+    <!-- Inner body -->
+    <div class="machine-inner">
+
+      <!-- Step bar -->
+      <div class="stepbar">
+        <div class="stp" id="s1"><div class="stp-circle" id="sc1">1</div><div class="stp-label">開機</div><div class="stp-line"></div></div>
+        <div class="stp" id="s2"><div class="stp-circle" id="sc2">2</div><div class="stp-label">貼貼片<br>插插頭</div><div class="stp-line"></div></div>
+        <div class="stp" id="s3"><div class="stp-circle" id="sc3">3</div><div class="stp-label">自動<br>分析</div><div class="stp-line"></div></div>
+        <div class="stp" id="s4"><div class="stp-circle" id="sc4">4</div><div class="stp-label">結果</div><div class="stp-line"></div></div>
+      </div>
+
+      <!-- ECG -->
+      <div class="ecg-screen">
+        <div class="ecg-topbar">
+          <span class="ecg-tag">Lead II 心電圖</span>
+          <span class="rhythm-badge" id="rbadge"></span>
+        </div>
+        <canvas id="ecg" width="440" height="120"></canvas>
+        <div class="ecg-footer">
+          <span class="ecg-stat" id="hrStat">心率：--</span>
+          <span class="ecg-stat" id="anaStat">等待開機</span>
+        </div>
+      </div>
+
+      <!-- Charge bar -->
+      <div class="charge-wrap" id="chargeWrap">
+        <div class="charge-label">充電中...</div>
+        <div class="charge-track"><div class="charge-fill" id="chargeFill"></div></div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-box">
+        <div class="status-txt" id="statusTxt">請按下電源鍵開機</div>
+      </div>
+
+      <!-- CPR bar -->
+      <div class="cpr-bar" id="cprBar">
+        <div class="cpr-pulse" id="cprPulse">♥</div>
+        <div class="cpr-info">
+          <div class="cpr-title">CPR 節拍器 — 100 次/分鐘</div>
+          <div class="cpr-sub">跟隨節拍按壓胸口，深度 5–6 cm</div>
+          <div class="cpr-countdown" id="cprCountdown"></div>
+        </div>
+        <button class="cpr-stop" onclick="stopMetronome()">停止</button>
+      </div>
+
+      <!-- Indicators -->
+      <div class="ind-row">
+        <div class="dot" id="dPwr"></div><span class="dot-lbl">電源</span>
+        <div class="dot" id="dPad" style="margin-left:6px;"></div><span class="dot-lbl">貼片</span>
+        <div class="dot" id="dPlug" style="margin-left:6px;"></div><span class="dot-lbl">插頭</span>
+        <div class="dot" id="dReady" style="margin-left:6px;"></div><span class="dot-lbl">就緒</span>
+      </div>
+
+      <!-- Shock button -->
+      <div class="shock-centre">
+        <div class="btn-shock-wrap" id="shockWrap">
+          <button class="btn-shock" onclick="doShock()" aria-label="電擊">
+            <div class="shock-triangle">
+              <svg viewBox="0 0 112 112" fill="none">
+                <path class="tri-bg"  d="M56 8 L104 100 L8 100 Z"/>
+                <path class="tri-mid" d="M56 24 L96 96 L16 96 Z"/>
+                <path class="tri-bolt" d="M60 38 L47 66 L56 66 L52 88 L70 58 L60 58 Z"/>
+              </svg>
+            </div>
+          </button>
+          <!-- No box, black text, no animation -->
+          <span class="shock-label-txt">電　擊</span>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="bottom-bar">
+        <button class="btn-outline" onclick="showPadModal()">📍 貼片位置教學</button>
+        <button class="btn-outline" onclick="doReset()">重置</button>
+      </div>
+
+      <!-- AED label -->
+      <div class="aed-label">A E D</div>
+
+      <!-- Rhythm selector — 4 buttons, single row -->
+      <div class="rhythm-sel" id="rhythmSel">
+        <span class="rhythm-sel-hdr">🎓 教學模式 — 選擇模擬心律（選擇後自動開始分析）</span>
+        <div class="rbtn-row">
+          <div class="rbtn" id="bVT"  onclick="pickRhythm('vt')">VT<small>可電擊</small></div>
+          <div class="rbtn" id="bVF"  onclick="pickRhythm('vf')">VF<small>可電擊</small></div>
+          <div class="rbtn" id="bASR" onclick="pickRhythm('asr')">Asystole<small>不可電擊</small></div>
+          <div class="rbtn" id="bPEA" onclick="pickRhythm('pea')">PEA<small>不可電擊</small></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Auto pad popup (triggered on power on) ── -->
+<div class="pad-overlay" id="padOverlay" onclick="closePadPopup()">
+  <div class="pad-popup" onclick="closePadPopup()">
+    <div class="pad-popup-hdr">
+      <div class="pad-popup-title">📍 電極貼片位置</div>
+      <div class="pad-popup-sub">請依圖示將貼片貼在正確位置後，點選任一處繼續</div>
+    </div>
+    <div class="pad-popup-body">
+      <!-- Adult figure -->
+      <div class="pad-fig-lg">
+        <svg viewBox="0 0 140 200" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="26" rx="19" ry="21" fill="none" stroke="#888" stroke-width="2"/>
+          <rect x="41" y="47" width="58" height="84" rx="10" fill="none" stroke="#888" stroke-width="2"/>
+          <line x1="41" y1="64" x2="14" y2="114" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="99" y1="64" x2="126" y2="114" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="55" y1="131" x2="49" y2="190" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="85" y1="131" x2="91" y2="190" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <!-- Pad 1: right clavicle -->
+          <rect x="48" y="56" width="30" height="26" rx="5" fill="#d93b3b" opacity=".9"/>
+          <text x="63" y="73" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">1號</text>
+          <!-- Pad 2: left lateral -->
+          <rect x="72" y="96" width="30" height="26" rx="5" fill="#1a4499" opacity=".9"/>
+          <text x="87" y="113" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">2號</text>
+        </svg>
+        <p>成人 / 8歲以上</p>
+      </div>
+      <!-- Labels -->
+      <div class="pad-popup-labels">
+        <div class="pad-popup-lbl" style="background:#fff2f2;border-left:4px solid #d93b3b;">
+          <p style="color:#a82020;">🔴 1號（右）</p>
+          <p>鎖骨正下方<br>胸骨右側</p>
+        </div>
+        <div class="pad-popup-lbl" style="background:#eef2ff;border-left:4px solid #1a4499;">
+          <p style="color:#1a4499;">🔵 2號（左）</p>
+          <p>左腋下<br>乳頭外側下方</p>
+        </div>
+      </div>
+      <!-- Child figure -->
+      <div class="pad-fig-lg">
+        <svg viewBox="0 0 140 200" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="24" rx="15" ry="17" fill="none" stroke="#888" stroke-width="2"/>
+          <rect x="48" y="42" width="44" height="68" rx="9" fill="none" stroke="#888" stroke-width="2"/>
+          <line x1="48" y1="57" x2="26" y2="100" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="92" y1="57" x2="114" y2="100" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="58" y1="110" x2="53" y2="170" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <line x1="82" y1="110" x2="87" y2="170" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+          <rect x="53" y="50" width="24" height="20" rx="5" fill="#d93b3b" opacity=".9"/>
+          <text x="65" y="64" text-anchor="middle" font-size="9" fill="#fff" font-weight="800">前胸</text>
+          <rect x="52" y="78" width="32" height="22" rx="5" fill="#1a4499" opacity=".88" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <text x="68" y="93" text-anchor="middle" font-size="9" fill="#fff" font-weight="800">背部</text>
+          <text x="68" y="106" text-anchor="middle" font-size="8" fill="#bbb">(翻面貼)</text>
+        </svg>
+        <p>兒童 / 8歲以下</p>
+      </div>
+    </div>
+    <div class="pad-popup-footer">
+      <span>👆 點選此視窗任一處 → 確認貼片完成，繼續操作</span>
+    </div>
+  </div>
+</div>
+
+<!-- Manual pad edu modal -->
+<div class="overlay" id="overlay">
+  <div class="modal-card">
+    <div class="modal-title">📍 AED 電極貼片位置</div>
+    <div class="modal-sub">請依圖示將兩片貼片正確貼好，再插上插頭</div>
+    <div class="pad-figs">
+      <div class="pad-fig">
+        <svg viewBox="0 0 140 185" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="26" rx="19" ry="21" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <rect x="41" y="47" width="58" height="78" rx="8" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <line x1="41" y1="62" x2="17" y2="108" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="99" y1="62" x2="123" y2="108" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="56" y1="125" x2="51" y2="178" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="84" y1="125" x2="89" y2="178" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="49" y="55" width="26" height="22" rx="4" fill="#d93b3b" opacity=".92"/>
+          <text x="62" y="70" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">1號</text>
+          <rect x="72" y="92" width="26" height="22" rx="4" fill="#1a4499" opacity=".92"/>
+          <text x="85" y="107" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">2號</text>
+        </svg>
+        <p>成人 / 8歲以上</p>
+      </div>
+      <div class="pad-fig">
+        <svg viewBox="0 0 140 185" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="25" rx="15" ry="17" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <rect x="48" y="43" width="44" height="66" rx="8" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <line x1="48" y1="57" x2="28" y2="96" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="92" y1="57" x2="112" y2="96" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="58" y1="109" x2="55" y2="158" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="82" y1="109" x2="85" y2="158" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="52" y="51" width="22" height="18" rx="4" fill="#d93b3b" opacity=".92"/>
+          <text x="63" y="64" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">前胸</text>
+          <rect x="54" y="78" width="28" height="20" rx="4" fill="#1a4499" opacity=".88" stroke="#4a90d9" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="68" y="91" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">背部</text>
+          <text x="68" y="103" text-anchor="middle" font-size="7" fill="#bbb">(背面貼)</text>
+        </svg>
+        <p>兒童 / 8歲以下</p>
+      </div>
+    </div>
+    <div class="pad-labels">
+      <div class="pad-lbl" style="background:#fff2f2;border-left:3px solid #d93b3b;">
+        <p style="color:#a82020;">🔴 1號貼片（右）</p><p>鎖骨正下方<br>胸骨右側</p>
+      </div>
+      <div class="pad-lbl" style="background:#eef2ff;border-left:3px solid #1a4499;">
+        <p style="color:#1a4499;">🔵 2號貼片（左）</p><p>左腋下<br>乳頭外側下方</p>
+      </div>
+    </div>
+    <div class="pad-note">
+      ⚠ 貼前請撕除衣物、擦乾皮膚。胸毛濃密者請先剃除或用第一片快速撕除後換新片。<br>
+      兒童請使用兒童貼片，若無則前胸一片、背部一片。
+    </div>
+    <button class="btn-modal-close" onclick="hideModal()">明白，關閉</button>
+  </div>
+</div>
+
+<script>
+/* ── State ── */
+const cv  = document.getElementById('ecg');
+const ctx = cv.getContext('2d');
+let powered=false, rhythm=null, shockCnt=0, animId=null, lastAnim='flat', rhythmLocked=false;
+let audioCtx=null, metroInterval=null, cprSecondsLeft=0, cprTimer=null, cprTimeout=null;
+let speechReady=false;
+
+/* ── Speech ── */
+function initSpeech(){
+  if(speechReady) return;
+  if(!('speechSynthesis' in window)) return;
+  const w=new SpeechSynthesisUtterance(''); w.volume=0;
+  window.speechSynthesis.speak(w);
+  speechReady=true;
+  document.getElementById('speechNotice').classList.add('hidden');
+}
+function say(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='zh-TW'; u.rate=0.88; u.pitch=1.0;
+  const voices=window.speechSynthesis.getVoices();
+  const v=voices.find(v=>v.lang==='zh-TW')||voices.find(v=>v.lang.startsWith('zh'));
+  if(v) u.voice=v;
+  window.speechSynthesis.speak(u);
+}
+if('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+
+/* ── Audio beep ── */
+function initAudio(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }
+function beep(){
+  try{
+    initAudio();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type='sine'; o.frequency.setValueAtTime(900,audioCtx.currentTime);
+    g.gain.setValueAtTime(0.6,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.09);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+0.10);
+  }catch(e){}
+}
+
+/* ── Metronome ── */
+function startMetronome(sec){
+  stopMetronome();
+  document.getElementById('cprBar').className='cpr-bar show';
+  const pulse=document.getElementById('cprPulse');
+  function tick(){ beep(); pulse.classList.remove('beat'); void pulse.offsetWidth; pulse.classList.add('beat'); }
+  tick(); metroInterval=setInterval(tick,600);
+  cprSecondsLeft=sec||120; updateCountdown();
+  cprTimer=setInterval(()=>{ cprSecondsLeft--; updateCountdown(); if(cprSecondsLeft<=0){stopMetronome();reAnalyse();} },1000);
+}
+function stopMetronome(){
+  clearInterval(metroInterval); metroInterval=null;
+  clearInterval(cprTimer); cprTimer=null;
+  clearTimeout(cprTimeout); cprTimeout=null;
+  document.getElementById('cprBar').className='cpr-bar';
+  document.getElementById('cprPulse').classList.remove('beat');
+  document.getElementById('cprCountdown').textContent='';
+}
+function updateCountdown(){
+  const m=Math.floor(cprSecondsLeft/60),s=cprSecondsLeft%60;
+  document.getElementById('cprCountdown').textContent=`下次分析倒數：${m}:${s.toString().padStart(2,'0')}`;
+}
+function scheduleCpr(){ lockRhythm(); cprTimeout=setTimeout(()=>startMetronome(120),3000); }
+
+/* ── Re-analyse ── */
+function reAnalyse(){
+  if(!rhythm) return;
+  unlockRhythm();
+  setStatus('🔍 AED 重新自動分析心律，請勿觸碰患者...');
+  setHR('心率：分析中...'); setAna('重新分析中'); setStep(3); drawFlat(); setBadge(null);
+  say('請勿觸碰患者，正在重新分析心律');
+  setTimeout(()=>applyResult(rhythm),3200);
+}
+
+/* ── Apply result ── */
+function applyResult(r){
+  setBadge(r);
+  if(r==='vt'){
+    drawVT(); setHR('心率：約 150 bpm (VT)'); setAna('建議電擊');
+    setStatus('⚡ 偵測到 VT！AED 正在充電，請按下紅色電擊鈕進行電擊。');
+    say('正在充電，請按下紅色電擊鈕進行電擊');
+    startCharging();
+  } else if(r==='vf'){
+    drawVF(); setHR('心率：無序 (VF)'); setAna('建議電擊');
+    setStatus('⚡ 偵測到 VF！AED 正在充電，請按下紅色電擊鈕進行電擊。');
+    say('正在充電，請按下紅色電擊鈕進行電擊');
+    startCharging();
+  } else if(r==='asr'){
+    drawASR(); setHR('心率：近乎為零'); setAna('不可電擊');
+    setStatus('⚠ Asystole（心跳停止），不建議電擊。請繼續 CPR！');
+    setStep(4); say('不建議電擊，請繼續CPR'); scheduleCpr();
+  } else {
+    drawPEA(); setHR('心率：40 bpm（無脈）'); setAna('不可電擊');
+    setStatus('⚠ PEA（無脈性電氣活動），不建議電擊。請繼續 CPR！');
+    setStep(4); say('不建議電擊，請繼續CPR'); scheduleCpr();
+  }
+}
+
+function lockRhythm()  { rhythmLocked=true;  ['bVT','bVF','bASR','bPEA'].forEach(id=>document.getElementById(id).classList.add('disabled')); }
+function unlockRhythm(){ rhythmLocked=false; ['bVT','bVF','bASR','bPEA'].forEach(id=>document.getElementById(id).classList.remove('disabled')); }
+
+/* ── UI helpers ── */
+function setStatus(t){ document.getElementById('statusTxt').textContent=t; }
+function setHR(t)    { document.getElementById('hrStat').textContent=t; }
+function setAna(t)   { document.getElementById('anaStat').textContent=t; }
+function setStep(n){
+  for(let i=1;i<=4;i++){
+    const s=document.getElementById('s'+i),c=document.getElementById('sc'+i);
+    if(i<n){s.className='stp done';c.textContent='✓';}
+    else if(i===n){s.className='stp active';c.textContent=i+'';}
+    else{s.className='stp';c.textContent=i+'';}
+  }
+}
+function setBadge(type){
+  const el=document.getElementById('rbadge');
+  if(!type){el.style.display='none';return;}
+  const map={
+    vt: ['rb-vt',  '⚡ VT — 可電擊'],
+    vf: ['rb-vf',  '⚡ VF — 可電擊'],
+    asr:['rb-asr', '— Asystole'],
+    pea:['rb-pea', '⚠ PEA'],
+  };
+  el.className='rhythm-badge '+map[type][0]; el.textContent=map[type][1];
+}
+
+/* ── Pad auto-popup ── */
+function openPadPopup(){
+  document.getElementById('padOverlay').className='pad-overlay show';
+}
+function closePadPopup(){
+  document.getElementById('padOverlay').className='pad-overlay';
+  // Auto complete plug step
+  document.getElementById('btnPlug').className='btn-plug done';
+  document.getElementById('dPad').className='dot green';
+  document.getElementById('dPlug').className='dot green';
+  setStatus('✅ 貼片完成，插頭已連接。請在下方選擇心律（教學模式）');
+  setStep(2);
+  // Unlock rhythm buttons so teacher can select
+  unlockRhythm();
+}
+
+/* ── Canvas ── */
+function cW(){ return cv.getBoundingClientRect().width; }
+function cH(){ return cv.getBoundingClientRect().height; }
+function resizeCanvas(){
+  const rect=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(rect.width*dpr); cv.height=Math.round(rect.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',()=>{ clearTimeout(window._rt); window._rt=setTimeout(()=>{resizeCanvas();redraw();},150); });
+
+function drawGrid(){
+  const W=cW(),H=cH();
+  ctx.fillStyle='#060f06'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#0d3a0d'; ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawFlat(){
+  cancelAnimationFrame(animId); lastAnim='flat'; drawGrid();
+  const W=cW(),mid=cH()/2;
+  ctx.strokeStyle='#1e6b1e'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+}
+
+/* Monomorphic VT: wide regular QRS ~150bpm */
+function drawVT(){
+  cancelAnimationFrame(animId); lastAnim='vt'; let t=0;
+  (function fr(){
+    const W=cW(),H=cH(),mid=H/2; drawGrid();
+    ctx.strokeStyle='#e8a000'; ctx.lineWidth=1.8; ctx.beginPath();
+    for(let x=0;x<W;x++){
+      const ph=(x+t)%60; let y=mid;
+      // Wide QRS: broad upstroke, plateau, broad downstroke
+      if(ph<4)       y=mid-2*Math.sin(ph/4*Math.PI);
+      else if(ph<10) y=mid-22*Math.sin((ph-4)/6*Math.PI);
+      else if(ph<20) y=mid-20+2*Math.sin((ph-10)/10*Math.PI);
+      else if(ph<26) y=mid-18*Math.sin((ph-20)/6*Math.PI*1.0);
+      else if(ph<30) y=mid+6*Math.sin((ph-26)/4*Math.PI);
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke(); t+=1.8; animId=requestAnimationFrame(fr);
+  })();
+}
+
+/* VF: chaotic */
+function drawVF(){
+  cancelAnimationFrame(animId); lastAnim='vf'; let t=0;
+  (function fr(){
+    const W=cW(),H=cH(),mid=H/2; drawGrid();
+    ctx.strokeStyle='#d93b3b'; ctx.lineWidth=1.5; ctx.beginPath();
+    for(let x=0;x<W;x++){
+      const y=mid+Math.sin((x+t)*.28)*18+Math.sin((x+t)*.72)*10+Math.sin((x+t)*1.4)*5+(Math.random()-.5)*3;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke(); t+=2; animId=requestAnimationFrame(fr);
+  })();
+}
+
+/* Asystole: near-flat */
+function drawASR(){
+  cancelAnimationFrame(animId); lastAnim='asr'; let t=0;
+  (function fr(){
+    const W=cW(),H=cH(),mid=H/2; drawGrid();
+    ctx.strokeStyle='#aaaaaa'; ctx.lineWidth=1.5; ctx.beginPath();
+    for(let x=0;x<W;x++){
+      const y=mid+(Math.random()-.5)*1.8+Math.sin((x+t)*0.05)*0.8;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke(); t+=1; animId=requestAnimationFrame(fr);
+  })();
+}
+
+/* PEA: organised QRS, slow ~40bpm */
+function drawPEA(){
+  cancelAnimationFrame(animId); lastAnim='pea'; let t=0;
+  (function fr(){
+    const W=cW(),H=cH(),mid=H/2; drawGrid();
+    ctx.strokeStyle='#d9850a'; ctx.lineWidth=1.5; ctx.beginPath();
+    for(let x=0;x<W;x++){
+      const ph=(x+t)%145; let y=mid;
+      if(ph<10)      y=mid-7*Math.sin(ph/10*Math.PI);
+      else if(ph<18) y=mid;
+      else if(ph<21) y=mid+6*Math.sin((ph-18)/3*Math.PI);
+      else if(ph<24) y=mid-28*Math.sin((ph-21)/3*Math.PI);
+      else if(ph<27) y=mid+10*Math.sin((ph-24)/3*Math.PI);
+      else if(ph<40) y=mid-1;
+      else if(ph<58) y=mid-8*Math.sin((ph-40)/18*Math.PI);
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke(); t+=1; animId=requestAnimationFrame(fr);
+  })();
+}
+
+function drawShockFlash(){
+  cancelAnimationFrame(animId); lastAnim='flat';
+  const W=cW(),H=cH(),mid=H/2,m=W/2; drawGrid();
+  ctx.strokeStyle='#f5a020'; ctx.lineWidth=2.5; ctx.beginPath();
+  ctx.moveTo(0,mid); ctx.lineTo(m-22,mid); ctx.lineTo(m,4);
+  ctx.lineTo(m+10,H-4); ctx.lineTo(m+24,mid); ctx.lineTo(W,mid);
+  ctx.stroke();
+  ctx.fillStyle='rgba(245,160,32,0.08)'; ctx.fillRect(m-32,0,64,H);
+}
+function redraw(){
+  if(lastAnim==='vt')  drawVT();
+  else if(lastAnim==='vf')  drawVF();
+  else if(lastAnim==='asr') drawASR();
+  else if(lastAnim==='pea') drawPEA();
+  else drawFlat();
+}
+
+/* ── Actions ── */
+function doPower(){
+  initSpeech();
+  if(powered){doReset();return;}
+  powered=true;
+  document.getElementById('btnPwr').className='btn-power on';
+  document.getElementById('dPwr').className='dot green';
+  // Show rhythm selector (greyed until pad popup closed)
+  document.getElementById('rhythmSel').className='rhythm-sel show';
+  lockRhythm(); // lock until pad confirmed
+  setStatus('🔊 開機中... 將貼片貼在病人的皮膚上，再插上插頭');
+  setStep(1); drawFlat();
+  say('將貼片貼在病人的皮膚上');
+  // Show pad popup after brief delay so speech starts first
+  setTimeout(openPadPopup, 600);
+}
+
+function doPlug(){
+  initSpeech(); if(!powered) return;
+  document.getElementById('btnPlug').className='btn-plug done';
+  document.getElementById('dPad').className='dot green';
+  document.getElementById('dPlug').className='dot green';
+  setStatus('🔌 插頭已連接。請在下方選擇心律（教學模式）'); setStep(2);
+}
+
+function pickRhythm(r){
+  initSpeech(); if(!powered||rhythmLocked) return;
+  rhythm=r;
+  ['bVT','bVF','bASR','bPEA'].forEach(id=>document.getElementById(id).className='rbtn');
+  const cls={vt:'sel-vt',vf:'sel-vf',asr:'sel-asr',pea:'sel-pea'};
+  const ids={vt:'bVT',vf:'bVF',asr:'bASR',pea:'bPEA'};
+  const labels={vt:'VT',vf:'VF',asr:'Asystole',pea:'PEA'};
+  const subs={vt:'可電擊',vf:'可電擊',asr:'不可電擊',pea:'不可電擊'};
+  document.getElementById(ids[r]).className='rbtn '+cls[r];
+  document.getElementById(ids[r]).innerHTML=`${labels[r]}<small>${subs[r]}</small>`;
+  stopMetronome();
+  setStatus('🔍 AED 正在自動分析心律，請勿觸碰患者...');
+  setHR('心率：分析中...'); setAna('自動分析中'); setStep(3); drawFlat(); setBadge(null);
+  say('請勿觸碰患者，正在分析心律');
+  setTimeout(()=>applyResult(r),3200);
+}
+
+function startCharging(){
+  const w=document.getElementById('chargeWrap'),f=document.getElementById('chargeFill');
+  w.className='charge-wrap show'; f.style.width='0%';
+  setTimeout(()=>{f.style.width='100%';},60);
+  setTimeout(()=>{
+    w.className='charge-wrap';
+    setStatus('🔴 充電完成！所有人離開！確認安全後按下電擊鍵！');
+    document.getElementById('shockWrap').className='btn-shock-wrap active';
+    document.getElementById('dReady').className='dot red';
+    say('充電完成，所有人離開患者，請按下電擊鍵');
+  },2300);
+}
+
+function doShock(){
+  initSpeech(); shockCnt++;
+  document.getElementById('shockWrap').className='btn-shock-wrap';
+  document.getElementById('dReady').className='dot';
+  drawShockFlash();
+  setStatus(`⚡ 執行電擊！（第 ${shockCnt} 次）`); say('執行電擊');
+  setTimeout(()=>{
+    drawVF(); setBadge('vf');
+    setHR('心率：持續監測中'); setAna('電擊後 CPR');
+    setStatus('🫀 電擊完成，請繼續 CPR！'); setStep(4);
+    document.getElementById('dReady').className='dot green';
+    say('電擊完成，請繼續CPR'); scheduleCpr();
+  },1500);
+}
+
+function doReset(){
+  initSpeech();
+  powered=false; rhythm=null; shockCnt=0; rhythmLocked=false;
+  cancelAnimationFrame(animId); stopMetronome();
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.getElementById('padOverlay').className='pad-overlay';
+  document.getElementById('btnPwr').className='btn-power';
+  document.getElementById('btnPlug').className='btn-plug';
+  document.getElementById('shockWrap').className='btn-shock-wrap';
+  document.getElementById('rhythmSel').className='rhythm-sel';
+  document.getElementById('chargeWrap').className='charge-wrap';
+  document.getElementById('chargeFill').style.width='0%';
+  document.getElementById('bVT').innerHTML='VT<small>可電擊</small>';
+  document.getElementById('bVF').innerHTML='VF<small>可電擊</small>';
+  document.getElementById('bASR').innerHTML='Asystole<small>不可電擊</small>';
+  document.getElementById('bPEA').innerHTML='PEA<small>不可電擊</small>';
+  ['bVT','bVF','bASR','bPEA'].forEach(id=>document.getElementById(id).className='rbtn');
+  setBadge(null); setHR('心率：--'); setAna('等待開機'); setStatus('請按下電源鍵開機');
+  ['dPwr','dPad','dPlug','dReady'].forEach(id=>document.getElementById(id).className='dot');
+  for(let i=1;i<=4;i++){document.getElementById('s'+i).className='stp';document.getElementById('sc'+i).textContent=i+'';}
+  drawFlat();
+}
+
+function showPadModal(){ initSpeech(); document.getElementById('overlay').className='overlay show'; }
+function hideModal(){ document.getElementById('overlay').className='overlay'; }
+
+window.addEventListener('load',()=>{ setTimeout(()=>{resizeCanvas();drawFlat();},100); });
+</script>
+</body>
+</html>
