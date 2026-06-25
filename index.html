@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>AED 模擬器 — 民眾教學版</title>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: #f0f0f0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── Layout ── */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(0.5rem, 2vw, 1.5rem) clamp(0.4rem, 2vw, 0.8rem) 3rem;
+  min-height: 100vh;
+}
+
+/* ── Speech notice ── */
+.speech-notice {
+  width: min(480px, 100%);
+  background: #fff8e1;
+  border: 1.5px solid #f5a623;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: clamp(11px, 2.5vw, 12px);
+  color: #7a5000;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.speech-notice.hidden { display: none; }
+
+/* ── Machine body ── */
+.machine {
+  background: #ffffff;
+  border-radius: 28px;
+  border: 3px solid #c8cdd2;
+  width: min(480px, 100%);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+  position: relative;
+  overflow: visible;
+}
+
+/* ── Top strip ── */
+.top-strip {
+  background: #e8ecf0;
+  border-radius: 25px 25px 0 0;
+  border-bottom: 2px solid #c8cdd2;
+  padding: clamp(8px,2.2vw,12px) clamp(10px,3vw,16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: clamp(60px, 14vw, 74px);
+  gap: 8px;
+}
+
+/* ── Power button ── */
+.btn-power {
+  width:  clamp(50px, 12vw, 64px);
+  height: clamp(50px, 12vw, 64px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #3ddc84, #15a04a);
+  border: 3px solid #0e7a38;
+  box-shadow: 0 2px 10px rgba(21,160,74,0.4);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.btn-power svg { width: clamp(24px, 5.5vw, 32px); height: clamp(24px, 5.5vw, 32px); }
+.btn-power .pr,
+.btn-power .pl  { stroke: #ffffff; }
+.btn-power .pwr-lbl {
+  font-size: clamp(7px, 1.8vw, 9px);
+  color: #fff; font-weight: 800; letter-spacing: 1px; margin-top: 1px;
+}
+.btn-power.on {
+  background: radial-gradient(circle at 38% 32%, #6effa8, #1dce60);
+  border-color: #00e676;
+  box-shadow: 0 0 0 5px rgba(0,230,118,.22), 0 2px 12px rgba(0,200,80,0.5);
+}
+.btn-power:active { transform: scale(0.93); }
+
+/* ── Brand ── */
+.brand-centre { text-align: center; flex: 1; min-width: 0; }
+.brand-name {
+  font-size: clamp(18px, 4.8vw, 24px);
+  font-weight: 900; color: #1a4499; letter-spacing: 3px;
+}
+.brand-sub  {
+  font-size: clamp(8px, 1.9vw, 10px);
+  color: #8892a0; font-weight: 500;
+}
+
+/* ── Plug button ── */
+.btn-plug {
+  width:  clamp(42px, 9.5vw, 54px);
+  height: clamp(42px, 9.5vw, 54px);
+  border-radius: 10px;
+  background: #ffffff;
+  border: 2px solid #222222;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(20px, 4.8vw, 26px);
+  cursor: pointer;
+  opacity: 0.32;
+  pointer-events: none;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.btn-plug.active      { opacity: 1; pointer-events: auto; }
+.btn-plug.active:active { transform: scale(0.93); background: #f0f0f0; }
+.btn-plug.done        { opacity: 0.36; pointer-events: none; background: #e0e0e0; }
+
+/* ── Inner body ── */
+.machine-inner {
+  background: #ffffff;
+  border-radius: 0 0 25px 25px;
+  padding: clamp(10px,2.5vw,14px) clamp(10px,3.2vw,18px) clamp(14px,3.5vw,20px);
+}
+
+/* ── Step bar ── */
+.stepbar {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: clamp(8px, 2vw, 12px);
+}
+.stp {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; position: relative;
+}
+.stp-circle {
+  width:  clamp(20px, 5vw, 26px);
+  height: clamp(20px, 5vw, 26px);
+  border-radius: 50%;
+  background: #eef0f3; border: 2px solid #c8cdd2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(9px, 2.2vw, 11px); color: #9aa5b0; font-weight: 700;
+  transition: all 0.3s; z-index: 1;
+}
+.stp-label {
+  font-size: clamp(8px, 1.8vw, 9px);
+  color: #9aa5b0; text-align: center; line-height: 1.3;
+}
+.stp-line {
+  position: absolute; top: clamp(10px,2.5vw,13px);
+  left: 50%; width: 100%; height: 2px;
+  background: #dde3e9; z-index: 0;
+}
+.stp:last-child .stp-line { display: none; }
+.stp.done   .stp-circle { background: #1d9e75; border-color: #1d9e75; color: #fff; }
+.stp.done   .stp-label  { color: #1d9e75; }
+.stp.done   .stp-line   { background: #1d9e75; }
+.stp.active .stp-circle { background: #1a4499; border-color: #1a4499; color: #fff; }
+.stp.active .stp-label  { color: #1a4499; font-weight: 700; }
+
+/* ── ECG screen ── */
+.ecg-screen {
+  background: #060f06;
+  border-radius: 10px;
+  border: 2px solid #3a3a3a;
+  padding: clamp(6px,1.5vw,8px);
+  margin-bottom: clamp(8px, 2vw, 12px);
+}
+.ecg-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.ecg-tag { font-size: clamp(9px,2vw,10px); color: #4db84d; font-weight: 700; }
+.rhythm-badge {
+  font-size: clamp(10px,2.2vw,11px); font-weight: 700;
+  padding: 2px 9px; border-radius: 5px; display: none;
+}
+.rb-vf  { background: #d93b3b; color: #fff; display: inline-block; }
+.rb-nsr { background: #1a8f68; color: #fff; display: inline-block; }
+.rb-asr { background: #d9850a; color: #fff; display: inline-block; }
+canvas#ecg { display: block; width: 100%; height: clamp(62px,16vw,82px); }
+.ecg-footer {
+  display: flex; justify-content: space-between; margin-top: 4px;
+}
+.ecg-stat { font-size: clamp(9px,2vw,10px); color: #3da83d; }
+
+/* ── Charge bar ── */
+.charge-wrap { margin-bottom: clamp(8px,2vw,10px); display: none; }
+.charge-wrap.show { display: block; }
+.charge-label { font-size: clamp(9px,2vw,10px); color: #666; margin-bottom: 4px; }
+.charge-track { background: #e8ecf0; border-radius: 3px; height: 7px; overflow: hidden; }
+.charge-fill  {
+  height: 100%; width: 0; background: #d93b3b;
+  border-radius: 3px; transition: width 2s linear;
+}
+
+/* ── Status box ── */
+.status-box {
+  background: #eef2ff;
+  border: 1.5px solid #1a4499;
+  border-radius: 8px;
+  padding: clamp(8px,2vw,11px) clamp(10px,2.5vw,14px);
+  margin-bottom: clamp(8px,2vw,12px);
+  min-height: clamp(44px,10vw,52px);
+  display: flex; align-items: center;
+}
+.status-txt {
+  font-size: clamp(11px,2.8vw,13px);
+  font-weight: 700; color: #0f2d6e; line-height: 1.5;
+}
+
+/* ── CPR bar ── */
+.cpr-bar {
+  display: none;
+  background: #fff2f2;
+  border: 1.5px solid #d93b3b;
+  border-radius: 8px;
+  padding: clamp(8px,2vw,10px) clamp(10px,2.5vw,14px);
+  margin-bottom: clamp(8px,2vw,12px);
+  align-items: center;
+  gap: clamp(8px,2vw,12px);
+}
+.cpr-bar.show { display: flex; }
+.cpr-pulse {
+  width:  clamp(30px,7.5vw,36px);
+  height: clamp(30px,7.5vw,36px);
+  border-radius: 50%; background: #d93b3b;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(14px,3.5vw,18px); color: #fff;
+}
+.cpr-pulse.beat { animation: heartbeat 0.15s ease-out; }
+@keyframes heartbeat {
+  0%   { transform: scale(1);    background: #d93b3b; }
+  50%  { transform: scale(1.38); background: #a82020; }
+  100% { transform: scale(1);    background: #d93b3b; }
+}
+.cpr-info { flex: 1; min-width: 0; }
+.cpr-title { font-size: clamp(11px,2.6vw,13px); font-weight: 700; color: #a82020; }
+.cpr-sub   { font-size: clamp(9px,2vw,10px); color: #888; margin-top: 1px; }
+.cpr-countdown {
+  font-size: clamp(10px,2.3vw,12px);
+  color: #d93b3b; font-weight: 800; margin-top: 3px;
+}
+.cpr-stop {
+  background: #fff; border: 2px solid #d93b3b; border-radius: 6px;
+  color: #d93b3b; font-size: clamp(10px,2.2vw,11px); font-weight: 700;
+  cursor: pointer; padding: clamp(4px,1vw,5px) clamp(8px,2vw,12px);
+  touch-action: manipulation; white-space: nowrap;
+  transition: all 0.2s;
+}
+.cpr-stop:active { background: #d93b3b; color: #fff; }
+
+/* ── Indicators ── */
+.ind-row {
+  display: flex; gap: clamp(6px,1.5vw,10px);
+  margin-bottom: clamp(10px,2.5vw,14px);
+  align-items: center; flex-wrap: wrap;
+}
+.dot {
+  width:  clamp(8px,2vw,11px);
+  height: clamp(8px,2vw,11px);
+  border-radius: 50%; background: #d8dfe8; transition: background 0.3s;
+}
+.dot.green { background: #00c853; animation: blink 1.1s infinite; }
+.dot.red   { background: #d93b3b; animation: blink 0.5s infinite; }
+.dot-lbl { font-size: clamp(9px,2vw,10px); color: #9aa5b0; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── Shock button (centre) ── */
+.shock-centre {
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: clamp(12px,3vw,16px);
+}
+.btn-shock-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  opacity: 0.2; pointer-events: none; transition: opacity 0.3s;
+}
+.btn-shock-wrap.active {
+  opacity: 1; pointer-events: auto;
+  animation: shock-glow 1.1s infinite;
+}
+@keyframes shock-glow {
+  0%,100% { filter: drop-shadow(0 0 0px rgba(220,60,0,0)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(220,60,0,.85)); }
+}
+.btn-shock {
+  width:  clamp(84px, 23vw, 116px);
+  height: clamp(84px, 23vw, 116px);
+  background: none; border: none; padding: 0;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.btn-shock svg {
+  width:  clamp(80px, 22vw, 112px);
+  height: clamp(80px, 22vw, 112px);
+}
+.btn-shock:active { transform: scale(0.94); }
+.tri-bg   { fill: #8a1800; }
+.tri-mid  { fill: #b02200; opacity: 0.4; }
+.tri-bolt { fill: #ffffff; stroke: #ffffff; stroke-width: 0.4; stroke-linejoin: round; }
+.btn-shock-wrap.active .tri-bg  { fill: #e83000; }
+.btn-shock-wrap.active .tri-mid { fill: #ff5520; opacity: 0.35; }
+
+.shock-label-box {
+  background: #fff; border: 2.5px solid #222;
+  border-radius: 7px;
+  padding: clamp(3px,1vw,5px) clamp(16px,4vw,24px);
+  min-width: clamp(74px,19vw,96px);
+  text-align: center; margin-top: -5px;
+}
+.shock-label-txt {
+  font-size: clamp(11px,2.8vw,14px);
+  font-weight: 900; color: #111; letter-spacing: 2px;
+}
+.btn-shock-wrap.active .shock-label-box { background: #e83000; border-color: #9a1800; animation: shock-box-pulse 1.1s infinite; }
+.btn-shock-wrap.active .shock-label-txt { color: #fff; }
+@keyframes shock-box-pulse { 0%,100%{ background: #e83000; } 50%{ background: #ff5520; } }
+
+/* ── Bottom bar ── */
+.bottom-bar {
+  display: flex; gap: clamp(6px,2vw,10px);
+  align-items: center; justify-content: space-between;
+  margin-bottom: clamp(10px,2.5vw,14px);
+}
+.btn-outline {
+  background: #fff; border: 2px solid #222222;
+  border-radius: 8px; color: #111111;
+  font-size: clamp(11px,2.5vw,12px); font-weight: 700;
+  cursor: pointer; padding: clamp(7px,1.8vw,9px) clamp(10px,2.5vw,14px);
+  transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+  touch-action: manipulation;
+}
+.btn-outline:active { background: #111; color: #fff; }
+
+/* ── AED label ── */
+.aed-label {
+  text-align: center; font-style: italic; letter-spacing: 5px;
+  font-size: clamp(22px,5.5vw,30px); font-weight: 900; color: #1a4499;
+  margin-bottom: clamp(8px,2vw,12px);
+}
+
+/* ── Rhythm selector ── */
+.rhythm-sel {
+  background: #f4f6f9; border: 1.5px solid #c8cdd2;
+  border-radius: 10px; padding: clamp(8px,2vw,10px) clamp(8px,2.5vw,12px);
+  display: none;
+}
+.rhythm-sel.show { display: block; }
+.rhythm-sel-hdr {
+  font-size: clamp(9px,2vw,10px); color: #8892a0; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 8px; display: block;
+}
+.rbtn-row { display: flex; gap: clamp(4px,1.2vw,6px); }
+.rbtn {
+  flex: 1; padding: clamp(7px,1.8vw,9px) clamp(4px,1vw,6px);
+  border-radius: 7px; border: 1.5px solid #c8cdd2;
+  background: #fff; color: #334;
+  font-size: clamp(10px,2.5vw,12px); font-weight: 600;
+  font-style: italic; cursor: pointer; text-align: center;
+  line-height: 1.4; transition: all 0.2s;
+  touch-action: manipulation;
+}
+.rbtn:active    { border-color: #1a4499; color: #1a4499; background: #edf0ff; }
+.rbtn.sel-nsr   { background: #edfff6; border-color: #1a8f68; color: #0a5e44; font-weight: 800; }
+.rbtn.sel-vf    { background: #fff0f0; border-color: #d93b3b; color: #9a1818; font-weight: 800; }
+.rbtn.sel-asr   { background: #fffbee; border-color: #d9850a; color: #7a4800; font-weight: 800; }
+.rbtn.disabled  { opacity: 0.38; pointer-events: none; }
+
+/* ── Modal overlay ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.58);
+  z-index: 300; display: none;
+  align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.overlay.show { display: flex; }
+.modal-card {
+  background: #fff; border: 2px solid #1a4499;
+  border-radius: 18px; padding: clamp(14px,3vw,22px);
+  width: min(380px, 100%);
+  box-shadow: 0 10px 40px rgba(0,0,0,.2);
+  max-height: 92vh; overflow-y: auto;
+}
+.modal-title { color: #1a4499; font-size: clamp(15px,3.5vw,17px); font-weight: 900; text-align: center; margin-bottom: 2px; }
+.modal-sub   { color: #888; font-size: clamp(10px,2.2vw,11px); text-align: center; margin-bottom: clamp(10px,2.5vw,14px); }
+.pad-figs    { display: flex; gap: clamp(8px,2.5vw,14px); margin-bottom: clamp(8px,2vw,12px); }
+.pad-fig     { flex: 1; text-align: center; }
+.pad-fig svg { width: 100%; max-width: 145px; }
+.pad-fig p   { font-size: clamp(10px,2.2vw,11px); color: #888; margin-top: 5px; }
+.pad-labels  { display: flex; gap: clamp(6px,1.5vw,8px); margin-bottom: clamp(8px,2vw,12px); }
+.pad-lbl     { flex: 1; padding: clamp(6px,1.5vw,8px); border-radius: 0 6px 6px 0; }
+.pad-lbl p:first-child { font-size: clamp(10px,2.2vw,11px); font-weight: 800; margin-bottom: 3px; }
+.pad-lbl p:last-child  { font-size: clamp(10px,2.2vw,11px); color: #444; line-height: 1.5; }
+.pad-note {
+  background: #fff5f5; border-left: 3px solid #d93b3b;
+  padding: clamp(6px,1.5vw,9px) clamp(8px,2vw,12px);
+  border-radius: 0 6px 6px 0;
+  font-size: clamp(10px,2.2vw,12px); color: #555; line-height: 1.6;
+  margin-bottom: clamp(10px,2.5vw,14px);
+}
+.btn-modal-close {
+  width: 100%; padding: clamp(9px,2vw,11px);
+  background: #1a4499; border: none; border-radius: 8px;
+  color: #fff; font-size: clamp(13px,3vw,15px); font-weight: 800;
+  cursor: pointer; touch-action: manipulation;
+  transition: background 0.2s;
+}
+.btn-modal-close:active { background: #0f2d6e; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- Speech notice -->
+  <div class="speech-notice" id="speechNotice">
+    🔊 點擊任意按鈕以啟用語音功能
+  </div>
+
+  <div class="machine">
+
+    <!-- Top strip: Power | Brand | Plug -->
+    <div class="top-strip">
+
+      <button class="btn-power" id="btnPwr" onclick="doPower()" aria-label="電源開關">
+        <svg viewBox="0 0 36 36" fill="none">
+          <path class="pr" d="M9 9A14 14 0 1 0 27 9" stroke-width="3.2" stroke-linecap="round"/>
+          <line class="pl" x1="18" y1="3" x2="18" y2="18" stroke-width="3.2" stroke-linecap="round"/>
+        </svg>
+        <span class="pwr-lbl">POWER</span>
+      </button>
+
+      <div class="brand-centre">
+        <div class="brand-name">AED</div>
+        <div class="brand-sub">自動體外心臟去顫器 — 民眾教學版</div>
+      </div>
+
+      <button class="btn-plug" id="btnPlug" onclick="doPlug()" title="插上貼片插頭">🔌</button>
+
+    </div><!-- /top-strip -->
+
+    <!-- Inner body -->
+    <div class="machine-inner">
+
+      <!-- Step bar -->
+      <div class="stepbar">
+        <div class="stp" id="s1">
+          <div class="stp-circle" id="sc1">1</div>
+          <div class="stp-label">開機</div>
+          <div class="stp-line"></div>
+        </div>
+        <div class="stp" id="s2">
+          <div class="stp-circle" id="sc2">2</div>
+          <div class="stp-label">貼貼片<br>插插頭</div>
+          <div class="stp-line"></div>
+        </div>
+        <div class="stp" id="s3">
+          <div class="stp-circle" id="sc3">3</div>
+          <div class="stp-label">自動<br>分析</div>
+          <div class="stp-line"></div>
+        </div>
+        <div class="stp" id="s4">
+          <div class="stp-circle" id="sc4">4</div>
+          <div class="stp-label">結果</div>
+          <div class="stp-line"></div>
+        </div>
+      </div>
+
+      <!-- ECG screen -->
+      <div class="ecg-screen">
+        <div class="ecg-topbar">
+          <span class="ecg-tag">Lead II 心電圖</span>
+          <span class="rhythm-badge" id="rbadge"></span>
+        </div>
+        <canvas id="ecg" width="440" height="80"></canvas>
+        <div class="ecg-footer">
+          <span class="ecg-stat" id="hrStat">心率：--</span>
+          <span class="ecg-stat" id="anaStat">等待開機</span>
+        </div>
+      </div>
+
+      <!-- Charge bar -->
+      <div class="charge-wrap" id="chargeWrap">
+        <div class="charge-label">充電中...</div>
+        <div class="charge-track"><div class="charge-fill" id="chargeFill"></div></div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-box">
+        <div class="status-txt" id="statusTxt">請按下電源鍵開機</div>
+      </div>
+
+      <!-- CPR bar -->
+      <div class="cpr-bar" id="cprBar">
+        <div class="cpr-pulse" id="cprPulse">♥</div>
+        <div class="cpr-info">
+          <div class="cpr-title">CPR 節拍器 — 100 次/分鐘</div>
+          <div class="cpr-sub">跟隨節拍按壓胸口，深度 5–6 cm</div>
+          <div class="cpr-countdown" id="cprCountdown"></div>
+        </div>
+        <button class="cpr-stop" onclick="stopMetronome()">停止</button>
+      </div>
+
+      <!-- Indicators -->
+      <div class="ind-row">
+        <div class="dot" id="dPwr"></div><span class="dot-lbl">電源</span>
+        <div class="dot" id="dPad" style="margin-left:8px;"></div><span class="dot-lbl">貼片</span>
+        <div class="dot" id="dPlug" style="margin-left:8px;"></div><span class="dot-lbl">插頭</span>
+        <div class="dot" id="dReady" style="margin-left:8px;"></div><span class="dot-lbl">就緒</span>
+      </div>
+
+      <!-- Shock button — centre -->
+      <div class="shock-centre">
+        <div class="btn-shock-wrap" id="shockWrap">
+          <button class="btn-shock" id="btnShock" onclick="doShock()" aria-label="電擊">
+            <svg viewBox="0 0 112 112" fill="none">
+              <path class="tri-bg"  d="M56 8 L104 100 L8 100 Z"/>
+              <path class="tri-mid" d="M56 24 L96 96 L16 96 Z"/>
+              <path class="tri-bolt" d="M60 38 L47 66 L56 66 L52 88 L70 58 L60 58 Z"/>
+            </svg>
+          </button>
+          <div class="shock-label-box">
+            <span class="shock-label-txt">電　擊</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="bottom-bar">
+        <button class="btn-outline" onclick="showModal()">📍 貼片位置教學</button>
+        <button class="btn-outline" onclick="doReset()">重置</button>
+      </div>
+
+      <!-- AED decorative label -->
+      <div class="aed-label">A E D</div>
+
+      <!-- Rhythm selector -->
+      <div class="rhythm-sel" id="rhythmSel">
+        <span class="rhythm-sel-hdr">🎓 教學模式 — 選擇模擬心律（選擇後自動開始分析）</span>
+        <div class="rbtn-row">
+          <div class="rbtn" id="bNSR" onclick="pickRhythm('nsr')">Sinus rhythm</div>
+          <div class="rbtn" id="bVF"  onclick="pickRhythm('vf')">VT / VF</div>
+          <div class="rbtn" id="bASR" onclick="pickRhythm('asr')">Asystole / PEA</div>
+        </div>
+      </div>
+
+    </div><!-- /machine-inner -->
+  </div><!-- /machine -->
+</div><!-- /wrap -->
+
+<!-- Pad placement modal -->
+<div class="overlay" id="overlay">
+  <div class="modal-card">
+    <div class="modal-title">📍 AED 電極貼片位置</div>
+    <div class="modal-sub">請依圖示將兩片貼片正確貼好，再插上插頭</div>
+
+    <div class="pad-figs">
+      <!-- Adult -->
+      <div class="pad-fig">
+        <svg viewBox="0 0 140 185" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="26" rx="19" ry="21" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <rect x="41" y="47" width="58" height="78" rx="8" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <line x1="41" y1="62" x2="17" y2="108" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="99" y1="62" x2="123" y2="108" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="56" y1="125" x2="51" y2="178" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="84" y1="125" x2="89" y2="178" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="49" y="55" width="26" height="22" rx="4" fill="#d93b3b" opacity=".92"/>
+          <text x="62" y="70" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">1號</text>
+          <rect x="72" y="92" width="26" height="22" rx="4" fill="#1a4499" opacity=".92"/>
+          <text x="85" y="107" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">2號</text>
+        </svg>
+        <p>成人 / 8歲以上</p>
+      </div>
+      <!-- Child -->
+      <div class="pad-fig">
+        <svg viewBox="0 0 140 185" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="70" cy="25" rx="15" ry="17" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <rect x="48" y="43" width="44" height="66" rx="8" fill="none" stroke="#aaa" stroke-width="1.5"/>
+          <line x1="48" y1="57" x2="28" y2="96" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="92" y1="57" x2="112" y2="96" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="58" y1="109" x2="55" y2="158" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="82" y1="109" x2="85" y2="158" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="52" y="51" width="22" height="18" rx="4" fill="#d93b3b" opacity=".92"/>
+          <text x="63" y="64" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">前胸</text>
+          <rect x="54" y="78" width="28" height="20" rx="4" fill="#1a4499" opacity=".88" stroke="#4a90d9" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="68" y="91" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">背部</text>
+          <text x="68" y="103" text-anchor="middle" font-size="7" fill="#bbb">(背面貼)</text>
+        </svg>
+        <p>兒童 / 8歲以下</p>
+      </div>
+    </div>
+
+    <div class="pad-labels">
+      <div class="pad-lbl" style="background:#fff2f2;border-left:3px solid #d93b3b;">
+        <p style="color:#a82020;">🔴 1號貼片（右）</p>
+        <p>鎖骨正下方<br>胸骨右側</p>
+      </div>
+      <div class="pad-lbl" style="background:#eef2ff;border-left:3px solid #1a4499;">
+        <p style="color:#1a4499;">🔵 2號貼片（左）</p>
+        <p>左腋下<br>乳頭外側下方</p>
+      </div>
+    </div>
+
+    <div class="pad-note">
+      ⚠ 貼前請撕除衣物、擦乾皮膚。胸毛濃密者請先剃除或用第一片快速撕除後換新片。<br>
+      兒童請使用兒童貼片，若無則前胸一片、背部一片。
+    </div>
+
+    <button class="btn-modal-close" onclick="hideModal()">明白，關閉</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ JavaScript ═══════════════════════ -->
+<script>
+/* ── State ── */
+const cv  = document.getElementById('ecg');
+const ctx = cv.getContext('2d');
+let powered       = false;
+let rhythm        = null;
+let shockCnt      = 0;
+let animId        = null;
+let lastAnim      = 'flat';   // track current waveform for resize redraw
+let rhythmLocked  = false;
+
+/* Audio */
+let audioCtx            = null;
+let metroInterval       = null;
+let cprSecondsLeft      = 0;
+let cprCountdownTimer   = null;
+let cprCycleTimeout     = null;
+
+/* Speech */
+let speechReady = false;
+
+/* ── Speech init (must be inside user-gesture) ── */
+function initSpeech() {
+  if (speechReady) return;
+  if (!('speechSynthesis' in window)) return;
+  // Pre-warm the engine with a silent utterance
+  const warm = new SpeechSynthesisUtterance('');
+  warm.volume = 0;
+  window.speechSynthesis.speak(warm);
+  speechReady = true;
+  document.getElementById('speechNotice').classList.add('hidden');
+}
+
+function say(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang  = 'zh-TW';
+  u.rate  = 0.88;
+  u.pitch = 1.0;
+  // Try zh-TW voice; fall back to any zh voice
+  const voices = window.speechSynthesis.getVoices();
+  const zhVoice = voices.find(v => v.lang === 'zh-TW')
+                || voices.find(v => v.lang.startsWith('zh'));
+  if (zhVoice) u.voice = zhVoice;
+  window.speechSynthesis.speak(u);
+}
+
+// Load voices when available (Chrome fires voiceschanged)
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+}
+
+/* ── Audio: metronome beep ── */
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function beep() {
+  try {
+    initAudio();
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.6,  audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.09);
+    osc.start(audioCtx.currentTime);
+    osc.stop (audioCtx.currentTime + 0.10);
+  } catch(e) {}
+}
+
+/* ── Metronome ── */
+function startMetronome(durationSec) {
+  stopMetronome();
+  document.getElementById('cprBar').className = 'cpr-bar show';
+  const pulse = document.getElementById('cprPulse');
+  function tick() {
+    beep();
+    pulse.classList.remove('beat');
+    void pulse.offsetWidth; // force reflow to restart animation
+    pulse.classList.add('beat');
+  }
+  tick(); // first beat immediately
+  metroInterval = setInterval(tick, 600); // 100 bpm = 600 ms
+
+  cprSecondsLeft = durationSec || 120;
+  updateCountdown();
+  cprCountdownTimer = setInterval(() => {
+    cprSecondsLeft--;
+    updateCountdown();
+    if (cprSecondsLeft <= 0) {
+      stopMetronome();
+      reAnalyse();
+    }
+  }, 1000);
+}
+
+function stopMetronome() {
+  clearInterval(metroInterval);      metroInterval = null;
+  clearInterval(cprCountdownTimer);  cprCountdownTimer = null;
+  clearTimeout(cprCycleTimeout);     cprCycleTimeout = null;
+  document.getElementById('cprBar').className = 'cpr-bar';
+  document.getElementById('cprPulse').classList.remove('beat');
+  document.getElementById('cprCountdown').textContent = '';
+}
+
+function updateCountdown() {
+  const m = Math.floor(cprSecondsLeft / 60);
+  const s = cprSecondsLeft % 60;
+  document.getElementById('cprCountdown').textContent =
+    `下次分析倒數：${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/* After speech ends (~3 s) start metronome */
+function scheduleCpr() {
+  lockRhythm();
+  cprCycleTimeout = setTimeout(() => startMetronome(120), 3000);
+}
+
+/* ── Re-analyse after 2-min CPR ── */
+function reAnalyse() {
+  if (!rhythm) return;
+  unlockRhythm();
+  setStatus('🔍 AED 重新自動分析心律，請勿觸碰患者...');
+  setHR('心率：分析中...');
+  setAna('重新分析中');
+  setStep(3);
+  drawFlat();
+  setBadge(null);
+  say('請勿觸碰患者，正在重新分析心律');
+  setTimeout(() => applyRhythmResult(rhythm), 3200);
+}
+
+/* ── Apply rhythm analysis result ── */
+function applyRhythmResult(r) {
+  setBadge(r);
+  if (r === 'vf') {
+    drawVF();
+    setHR('心率：無序 (VF)');
+    setAna('建議電擊');
+    setStatus('⚡ 偵測到 VT/VF！AED 正在充電，請確保所有人離開患者...');
+    say('偵測到可電擊心律，正在充電，所有人請離開患者');
+    startCharging();
+  } else if (r === 'nsr') {
+    drawNSR();
+    setHR('心率：75 bpm');
+    setAna('不需電擊');
+    setStatus('✅ Sinus rhythm，不建議電擊。請繼續 CPR！');
+    setStep(4);
+    say('不需電擊，請繼續CPR');
+    scheduleCpr();
+  } else {
+    drawASR();
+    setHR('心率：極低');
+    setAna('不可電擊');
+    setStatus('⚠ Asystole / PEA，不建議電擊。請繼續 CPR！');
+    setStep(4);
+    say('不可電擊心律，請繼續CPR');
+    scheduleCpr();
+  }
+}
+
+function lockRhythm()   { rhythmLocked = true;  ['bNSR','bVF','bASR'].forEach(id => document.getElementById(id).classList.add('disabled')); }
+function unlockRhythm() { rhythmLocked = false; ['bNSR','bVF','bASR'].forEach(id => document.getElementById(id).classList.remove('disabled')); }
+
+/* ── UI helpers ── */
+function setStatus(t) { document.getElementById('statusTxt').textContent = t; }
+function setHR(t)     { document.getElementById('hrStat').textContent = t; }
+function setAna(t)    { document.getElementById('anaStat').textContent = t; }
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const s = document.getElementById('s'  + i);
+    const c = document.getElementById('sc' + i);
+    if      (i < n)  { s.className = 'stp done';   c.textContent = '✓'; }
+    else if (i === n){ s.className = 'stp active'; c.textContent = i + ''; }
+    else             { s.className = 'stp';        c.textContent = i + ''; }
+  }
+}
+function setBadge(type) {
+  const el = document.getElementById('rbadge');
+  if (!type) { el.style.display = 'none'; return; }
+  const map = {
+    vf:  ['rb-vf',  '⚡ VT/VF — 可電擊'],
+    nsr: ['rb-nsr', '✓ Sinus Rhythm'],
+    asr: ['rb-asr', '⚠ Asystole/PEA'],
+  };
+  el.className = 'rhythm-badge ' + map[type][0];
+  el.textContent = map[type][1];
+}
+
+/* ── Canvas helpers ── */
+function cW() { return cv.getBoundingClientRect().width; }
+function cH() { return cv.getBoundingClientRect().height; }
+
+function resizeCanvas() {
+  const rect = cv.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  cv.width   = Math.round(rect.width  * dpr);
+  cv.height  = Math.round(rect.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', () => {
+  clearTimeout(window._resizeTimer);
+  window._resizeTimer = setTimeout(() => { resizeCanvas(); redraw(); }, 150);
+});
+
+function drawGrid() {
+  const W = cW(), H = cH();
+  ctx.fillStyle = '#060f06';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#0d3a0d';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+}
+function drawFlat() {
+  cancelAnimationFrame(animId);
+  lastAnim = 'flat';
+  drawGrid();
+  const W = cW(), mid = cH() / 2;
+  ctx.strokeStyle = '#1e6b1e'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+}
+function drawNSR() {
+  cancelAnimationFrame(animId);
+  lastAnim = 'nsr';
+  let t = 0;
+  (function frame() {
+    const W = cW(), H = cH(), mid = H / 2;
+    drawGrid();
+    ctx.strokeStyle = '#00e600'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const ph = (x + t) % 90; let y = mid;
+      if      (ph < 8)  y = mid - 8  * Math.sin(ph / 8  * Math.PI);
+      else if (ph < 11) y = mid - 30 * Math.sin((ph-8)  / 3  * Math.PI);
+      else if (ph < 14) y = mid + 8  * Math.sin((ph-11) / 3  * Math.PI);
+      else if (ph < 30) y = mid - 12 * Math.sin((ph-14) / 16 * Math.PI);
+      x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    t += 1.5;
+    animId = requestAnimationFrame(frame);
+  })();
+}
+function drawVF() {
+  cancelAnimationFrame(animId);
+  lastAnim = 'vf';
+  let t = 0;
+  (function frame() {
+    const W = cW(), H = cH(), mid = H / 2;
+    drawGrid();
+    ctx.strokeStyle = '#d93b3b'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const y = mid
+        + Math.sin((x+t)*.28)*18
+        + Math.sin((x+t)*.72)*10
+        + Math.sin((x+t)*1.4)*5
+        + (Math.random()-.5)*3;
+      x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    t += 2;
+    animId = requestAnimationFrame(frame);
+  })();
+}
+function drawASR() {
+  cancelAnimationFrame(animId);
+  lastAnim = 'asr';
+  let t = 0;
+  (function frame() {
+    const W = cW(), H = cH(), mid = H / 2;
+    drawGrid();
+    ctx.strokeStyle = '#d9850a'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const ph = (x+t) % 145; let y = mid;
+      if      (ph < 10) y = mid - 8  * Math.sin(ph/10 * Math.PI);
+      else if (ph < 14) y = mid - 20 * Math.sin((ph-10)/4  * Math.PI);
+      else if (ph < 26) y = mid + 5  * Math.sin((ph-14)/12 * Math.PI);
+      x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    t += 1;
+    animId = requestAnimationFrame(frame);
+  })();
+}
+function drawShockFlash() {
+  cancelAnimationFrame(animId);
+  lastAnim = 'flat';
+  const W = cW(), H = cH(), mid = H / 2, m = W / 2;
+  drawGrid();
+  ctx.strokeStyle = '#f5a020'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(0, mid); ctx.lineTo(m-22, mid);
+  ctx.lineTo(m, 4);   ctx.lineTo(m+10, H-4);
+  ctx.lineTo(m+24, mid); ctx.lineTo(W, mid);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(245,160,32,0.08)';
+  ctx.fillRect(m-32, 0, 64, H);
+}
+function redraw() {
+  if      (lastAnim === 'nsr') drawNSR();
+  else if (lastAnim === 'vf')  drawVF();
+  else if (lastAnim === 'asr') drawASR();
+  else                         drawFlat();
+}
+
+/* ── Power ── */
+function doPower() {
+  initSpeech(); // warm up on first user gesture
+  if (powered) { doReset(); return; }
+  powered = true;
+  document.getElementById('btnPwr').className  = 'btn-power on';
+  document.getElementById('dPwr').className    = 'dot green';
+  document.getElementById('rhythmSel').className = 'rhythm-sel show';
+  document.getElementById('btnPlug').className = 'btn-plug active';
+  setStatus('🔊 開機中... 將貼片貼在病人的皮膚上，再插上插頭');
+  setStep(1);
+  drawFlat();
+  say('將貼片貼在病人的皮膚上');
+}
+
+/* ── Plug ── */
+function doPlug() {
+  initSpeech();
+  if (!powered) return;
+  document.getElementById('btnPlug').className = 'btn-plug done';
+  document.getElementById('dPad').className    = 'dot green';
+  document.getElementById('dPlug').className   = 'dot green';
+  setStatus('🔌 插頭已連接。請在下方選擇心律（教學模式）');
+  setStep(2);
+}
+
+/* ── Pick rhythm → auto-analyse ── */
+function pickRhythm(r) {
+  initSpeech();
+  if (!powered || rhythmLocked) return;
+  rhythm = r;
+
+  // Highlight selection
+  ['bNSR','bVF','bASR'].forEach(id => document.getElementById(id).className = 'rbtn');
+  const cls = { nsr:'sel-nsr', vf:'sel-vf', asr:'sel-asr' };
+  const ids = { nsr:'bNSR',    vf:'bVF',    asr:'bASR'    };
+  document.getElementById(ids[r]).className = 'rbtn ' + cls[r];
+
+  stopMetronome();
+  setStatus('🔍 AED 正在自動分析心律，請勿觸碰患者...');
+  setHR('心率：分析中...');
+  setAna('自動分析中');
+  setStep(3);
+  drawFlat();
+  setBadge(null);
+  say('請勿觸碰患者，正在分析心律');
+
+  setTimeout(() => applyRhythmResult(r), 3200);
+}
+
+/* ── Charging ── */
+function startCharging() {
+  const wrap = document.getElementById('chargeWrap');
+  const fill = document.getElementById('chargeFill');
+  wrap.className = 'charge-wrap show';
+  fill.style.width = '0%';
+  setTimeout(() => { fill.style.width = '100%'; }, 60);
+  setTimeout(() => {
+    wrap.className = 'charge-wrap';
+    setStatus('🔴 充電完成！所有人離開！確認安全後按下電擊鍵！');
+    document.getElementById('shockWrap').className = 'btn-shock-wrap active';
+    document.getElementById('dReady').className    = 'dot red';
+    say('充電完成，所有人離開患者，請按下電擊鍵');
+  }, 2300);
+}
+
+/* ── Shock ── */
+function doShock() {
+  initSpeech();
+  shockCnt++;
+  document.getElementById('shockWrap').className = 'btn-shock-wrap';
+  document.getElementById('dReady').className    = 'dot';
+  drawShockFlash();
+  setStatus(`⚡ 執行電擊！（第 ${shockCnt} 次）`);
+  say('執行電擊');
+  setTimeout(() => {
+    drawVF();
+    setBadge('vf');
+    setHR('心率：持續監測中');
+    setAna('電擊後 CPR');
+    setStatus('🫀 電擊完成，請繼續 CPR！');
+    setStep(4);
+    document.getElementById('dReady').className = 'dot green';
+    say('電擊完成，請繼續CPR');
+    scheduleCpr();
+  }, 1500);
+}
+
+/* ── Reset ── */
+function doReset() {
+  initSpeech();
+  powered = false; rhythm = null; shockCnt = 0; rhythmLocked = false;
+  cancelAnimationFrame(animId);
+  stopMetronome();
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+  document.getElementById('btnPwr').className    = 'btn-power';
+  document.getElementById('btnPlug').className   = 'btn-plug';
+  document.getElementById('shockWrap').className = 'btn-shock-wrap';
+  document.getElementById('rhythmSel').className = 'rhythm-sel';
+  document.getElementById('chargeWrap').className= 'charge-wrap';
+  document.getElementById('chargeFill').style.width = '0%';
+  ['bVF','bNSR','bASR'].forEach(id => document.getElementById(id).className = 'rbtn');
+  setBadge(null);
+  setHR('心率：--');
+  setAna('等待開機');
+  setStatus('請按下電源鍵開機');
+  ['dPwr','dPad','dPlug','dReady'].forEach(id => document.getElementById(id).className = 'dot');
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('s'  + i).className   = 'stp';
+    document.getElementById('sc' + i).textContent = i + '';
+  }
+  drawFlat();
+}
+
+/* ── Modal ── */
+function showModal() { initSpeech(); document.getElementById('overlay').className = 'overlay show'; }
+function hideModal() { document.getElementById('overlay').className = 'overlay'; }
+
+/* ── Init ── */
+window.addEventListener('load', () => {
+  setTimeout(() => { resizeCanvas(); drawFlat(); }, 100);
+});
+</script>
+</body>
+</html>
